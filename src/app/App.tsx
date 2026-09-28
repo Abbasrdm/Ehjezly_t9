@@ -3,16 +3,16 @@ import { motion } from "motion/react";
 import {
   Home, CalendarDays, User, BookOpen, Search, ChevronLeft,
   Star, MapPin, Clock, Plus, ChevronRight, Check, Edit3,
-  TrendingUp, Users, DollarSign, X, LogOut, Bell, Shield,
+  Users, DollarSign, X, LogOut, Bell, Shield,
   Scissors, Sparkles, Flower2, Dumbbell, Brain, Tag,
   Heart, Gift, UserPlus, Info, Share2, Copy, Camera,
   Navigation, LayoutGrid, CalendarRange,
-  BarChart2, AlertCircle,
+  AlertCircle, BarChart2,
 } from "lucide-react";
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell, BarChart, Bar,
 } from "recharts";
-
 // ── Types ─────────────────────────────────────────────────────────────────────
 type View =
   | "splash" | "login" | "signup" | "forgot-password"
@@ -22,7 +22,7 @@ type View =
   | "provider-dashboard" | "provider-calendar"
   | "service-setup" | "business-profile"
   | "settings" | "edit-account" | "privacy" | "about-us"
-  | "gift-cards" | "invite-friends" | "favorites" | "revenue-detail";
+  | "gift-cards" | "invite-friends" | "favorites" | "revenue-detail" | "payment-card";
 
 type AccountType = "personal" | "business";
 type Gender = "women" | "men";
@@ -109,16 +109,7 @@ const DAY_NAMES_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const TODAY_IDX = NOW.getDay();
 
-const REVENUE_DATA = [
-  { day: "Sun", revenue: 140, dayIdx: 0 },
-  { day: "Mon", revenue: 85, dayIdx: 1 },
-  { day: "Tue", revenue: 120, dayIdx: 2 },
-  { day: "Wed", revenue: 95, dayIdx: 3 },
-  { day: "Thu", revenue: 160, dayIdx: 4 },
-  { day: "Fri", revenue: 210, dayIdx: 5 },
-  { day: "Sat", revenue: 185, dayIdx: 6 },
-];
-const TODAY_REVENUE = REVENUE_DATA.find((d) => d.dayIdx === TODAY_IDX)?.revenue ?? 140;
+
 
 const TIME_SLOTS = ["9:00 AM", "10:00 AM", "11:00 AM", "12:00 PM", "2:00 PM", "3:00 PM", "4:00 PM", "5:00 PM"];
 
@@ -206,8 +197,10 @@ export default function App() {
   const [showNotifPopup, setShowNotifPopup] = useState(false);
   const [bookingRequests, setBookingRequests] = useState<BookingRequest[]>([]);
   const [userReviews, setUserReviews] = useState<UserReview[]>([]);
-  const [revenueDetailDay, setRevenueDetailDay] = useState<string>("Fri");
   const [services, setServices] = useState<ServiceItem[]>(INIT_SERVICES);
+  const [revenueDetailDay, setRevenueDetailDay] = useState<string>("Fri");
+  const [giftPayAmt, setGiftPayAmt] = useState<number>(20);
+  const [giftPayRecipient, setGiftPayRecipient] = useState<string>("");
 
   const isAuthenticated = view !== "splash" && view !== "login" && view !== "signup" && view !== "forgot-password";
   // Guest tries to book — intercept and show modal
@@ -309,7 +302,9 @@ export default function App() {
           {view === "booking-flow" && selectedProvider && <BookingFlow provider={selectedProvider} accountType={accountType} days={days} selectedDate={selectedDate} setSelectedDate={setSelectedDate} selectedTime={selectedTime} setSelectedTime={setSelectedTime} bookedSlots={personalBookedSlots} onConfirm={confirmBooking} />}
           {view === "my-appointments" && <MyAppointments bookingRequests={bookingRequests} onSearch={() => navigate("search-results")} onProvider={openProvider} onCancelRequest={(id) => setBookingRequests((prev) => prev.map((r) => r.id === id ? { ...r, status: "cancelled" } : r))} onAddReview={addReview} />}
           {view === "business-bookings" && <BusinessBookings bookingRequests={bookingRequests} onAccept={(id) => setBookingRequests((prev) => prev.map((r) => r.id === id ? { ...r, status: "confirmed" } : r))} onReject={(id) => setBookingRequests((prev) => prev.map((r) => r.id === id ? { ...r, status: "rejected" } : r))} />}
-          {view === "provider-dashboard" && <ProviderDashboard accountName={activeAccount.name} onCalendar={() => navigate("provider-calendar")} onRevenueDay={(day) => { setRevenueDetailDay(day); navigate("revenue-detail"); }} />}
+          {view === "provider-dashboard" && <ProviderDashboard accountName={activeAccount.name} onCalendar={() => navigate("provider-calendar")} onRevenue={() => navigate("revenue-detail")} />}
+          {view === "revenue-detail" && <RevenueDetailPage onBack={goBack} selectedDay={revenueDetailDay} onDaySelect={setRevenueDetailDay} />}
+          {view === "payment-card" && <PaymentCardScreen amount={giftPayAmt} recipient={giftPayRecipient} onBack={goBack} onSuccess={() => navigate("gift-cards")} />}
           {view === "provider-calendar" && <ProviderCalendar accountType={accountType} bookingRequests={bookingRequests} onProvider={openProvider} />}
           {view === "service-setup" && <ServiceSetup services={services} setServices={setServices} />}
           {view === "business-profile" && <BusinessProfileEditor />}
@@ -317,10 +312,9 @@ export default function App() {
           {view === "edit-account" && <EditAccount account={activeAccount} onSave={(u) => { setAccounts((prev) => prev.map((a) => a.id === u.id ? u : a)); goBack(); }} />}
           {view === "privacy" && <PrivacyPage />}
           {view === "about-us" && <AboutUsPage />}
-          {view === "gift-cards" && <GiftCardsPage />}
+          {view === "gift-cards" && <GiftCardsPage onPay={(amt, rec) => { setGiftPayAmt(amt); setGiftPayRecipient(rec); navigate("payment-card"); }} />}
           {view === "invite-friends" && <InviteFriendsPage />}
           {view === "favorites" && <FavoritesPage favorites={favorites} onProvider={openProvider} onToggleFavorite={toggleFavorite} />}
-          {view === "revenue-detail" && <RevenueDetailPage selectedDay={revenueDetailDay} onBack={goBack} onDaySelect={setRevenueDetailDay} />}
         </motion.div>
 
         {isAuthenticated && <div className="absolute bottom-0 left-0 right-0 z-40"><BottomNav activeTab={activeTab} onTab={(tab) => { setActiveTab(tab); if (tab === "home") navigate(accountType === "personal" ? "client-home" : "provider-dashboard"); if (tab === "bookings") navigate(accountType === "personal" ? "my-appointments" : "business-bookings"); if (tab === "calendar") navigate("provider-calendar"); if (tab === "profile") navigate("settings"); }} /></div>}
@@ -458,85 +452,231 @@ function SplashScreen({ onStart }: { onStart: () => void }) {
 }
 
 // ── Login (with validation + email keyboard) ──────────────────────────────────
+// ── Password strength helper (Task 9) ────────────────────────────────────────
+function pwStrengthCalc(pw: string): { level: number; label: string; color: string } {
+  let s = 0;
+  if (pw.length >= 8) s++;
+  if (/[A-Z]/.test(pw)) s++;
+  if (/[0-9]/.test(pw)) s++;
+  if (/[^A-Za-z0-9]/.test(pw)) s++;
+  const levels = [
+    { level: 0, label: "", color: "" },
+    { level: 1, label: "Weak", color: "#D4183D" },
+    { level: 2, label: "Fair", color: "#F97316" },
+    { level: 3, label: "Good", color: "#F8CD42" },
+    { level: 4, label: "Strong", color: "#16A34A" },
+  ];
+  return levels[s] ?? levels[0];
+}
+
+// ── Login (Task 9: show/hide pw, inline validation icons, shake on error) ────
 function LoginScreen({ email, setEmail, password, setPassword, accountType, setAccountType, onLogin, onSignup, onForgot, onGuest, accounts }: { email: string; setEmail: (v: string) => void; password: string; setPassword: (v: string) => void; accountType: AccountType; setAccountType: (v: AccountType) => void; onLogin: (type: AccountType) => void; onSignup: () => void; onForgot: () => void; onGuest: () => void; accounts: Account[] }) {
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [showPw, setShowPw] = useState(false);
+  const [shake, setShake] = useState(false);
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+
+  const emailOk = email.includes("@") && email.includes(".");
+  const pwOk = password.length >= 4;
+
   function submit() {
+    setTouched({ email: true, password: true });
     const e: Record<string, string> = {};
     if (!email.trim()) e.email = "This field is required";
-    else if (!email.includes("@")) e.email = "Please enter a valid email address";
+    else if (!emailOk) e.email = "Please enter a valid email address";
     if (!password) e.password = "This field is required";
-    else if (password.length < 4) e.password = "Password must be at least 4 characters";
-    if (!Object.keys(e).length) { onLogin(accountType); return; }
-    setErrors(e);
+    else if (!pwOk) e.password = "Password must be at least 4 characters";
+    if (Object.keys(e).length) { setErrors(e); setShake(true); setTimeout(() => setShake(false), 500); return; }
+    setErrors({});
+    onLogin(accountType);
   }
+
   return (
-    <div className="flex flex-col min-h-screen px-6 pt-16 pb-8">
-      <div className="mb-10">
-        <h1 className="text-4xl font-bold text-primary mb-1" style={{ fontFamily: "Inter, sans-serif", fontStyle: "normal" }}>Welcome back</h1>
+    <div className="flex flex-col min-h-screen px-6 pt-14 pb-8">
+      <motion.div className="mb-8" initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
+        <h1 className="text-4xl font-bold text-primary mb-1">Welcome back</h1>
         <p className="text-muted-foreground text-sm">Sign in to your account</p>
+      </motion.div>
+      <div className="flex gap-1 mb-6 bg-muted rounded-2xl p-1">
+        {(["personal", "business"] as AccountType[]).map((t) => (
+          <button key={t} onClick={() => setAccountType(t)} className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all ${accountType === t ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>
+            {t === "personal" ? "Personal" : "Business"}
+          </button>
+        ))}
       </div>
-      <div className="flex gap-1 mb-8 bg-muted rounded-2xl p-1">{(["personal", "business"] as AccountType[]).map((t) => <button key={t} onClick={() => setAccountType(t)} className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all ${accountType === t ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>{t === "personal" ? "Personal" : "Business"}</button>)}</div>
-      <div className="flex flex-col gap-4 mb-2">
-        <div>
+      <motion.div animate={shake ? { x: [-6, 6, -5, 5, -3, 3, 0] } : { x: 0 }} transition={{ duration: 0.45 }} className="flex flex-col gap-4 mb-2">
+        {/* Email — Input Prompt + inline validation icon */}
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
           <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 block">Email or Phone</label>
-          <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Enter your email or phone" type="text" inputMode="email" autoComplete="email" autoCapitalize="none" className={`w-full px-4 py-3.5 rounded-xl bg-muted border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 text-sm ${errors.email ? "border-destructive" : "border-border"}`} />
-          {errors.email && <p className="text-xs text-destructive mt-1">{errors.email}</p>}
-        </div>
-        <div>
-          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 block">Password</label>
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className={`w-full px-4 py-3.5 rounded-xl bg-muted border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 text-sm ${errors.password ? "border-destructive" : "border-border"}`} />
-          {errors.password && <p className="text-xs text-destructive mt-1">{errors.password}</p>}
-        </div>
-        <button onClick={onForgot} className="text-right text-xs text-primary font-semibold">Forgot password?</button>
-      </div>
-      <button onClick={submit} className="w-full py-4 rounded-2xl bg-primary text-primary-foreground font-bold text-base hover:opacity-90 transition-opacity mb-3 mt-4">Sign In</button>
-      <div className="flex items-center gap-3 my-1">
-        <div className="flex-1 h-px bg-border" />
-        <span className="text-xs text-muted-foreground font-medium">or</span>
-        <div className="flex-1 h-px bg-border" />
-      </div>
+          <div className="relative">
+            <input value={email} onChange={e => { setEmail(e.target.value); if (touched.email) setErrors(p => ({ ...p, email: "" })); }}
+              onBlur={() => setTouched(p => ({ ...p, email: true }))}
+              placeholder="reem@gmail.com" type="text" inputMode="email" autoComplete="email" autoCapitalize="none"
+              className={`w-full px-4 py-3.5 pr-10 rounded-xl bg-muted border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 text-sm transition-colors ${errors.email ? "border-destructive bg-destructive/5" : touched.email && emailOk ? "border-green-500" : "border-border"}`} />
+            {touched.email && (
+              <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 300 }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-sm">{emailOk ? "✅" : "❌"}</motion.span>
+            )}
+          </div>
+          {errors.email && <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} className="text-xs text-destructive mt-1 flex items-center gap-1"><AlertCircle size={11} />{errors.email}</motion.p>}
+        </motion.div>
+        {/* Password — show/hide toggle */}
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Password</label>
+            <button onClick={onForgot} className="text-xs text-primary font-semibold">Forgot password?</button>
+          </div>
+          <div className="relative">
+            <input type={showPw ? "text" : "password"} value={password}
+              onChange={e => { setPassword(e.target.value); if (touched.password) setErrors(p => ({ ...p, password: "" })); }}
+              onBlur={() => setTouched(p => ({ ...p, password: true }))}
+              placeholder="••••••••"
+              className={`w-full px-4 py-3.5 pr-20 rounded-xl bg-muted border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 text-sm transition-colors ${errors.password ? "border-destructive bg-destructive/5" : touched.password && pwOk ? "border-green-500" : "border-border"}`} />
+            <button onClick={() => setShowPw(v => !v)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-primary px-2 py-1 rounded-lg bg-primary/10 hover:bg-primary/20 transition-colors">
+              {showPw ? "Hide" : "Show"}
+            </button>
+          </div>
+          {errors.password && <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} className="text-xs text-destructive mt-1 flex items-center gap-1"><AlertCircle size={11} />{errors.password}</motion.p>}
+        </motion.div>
+      </motion.div>
+      <motion.button onClick={submit} whileTap={{ scale: 0.97 }} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+        className="w-full py-4 rounded-2xl bg-primary text-primary-foreground font-bold text-base hover:opacity-90 transition-opacity mb-3 mt-4">
+        Sign In
+      </motion.button>
+      <div className="flex items-center gap-3 my-1"><div className="flex-1 h-px bg-border" /><span className="text-xs text-muted-foreground font-medium">or</span><div className="flex-1 h-px bg-border" /></div>
       <button onClick={onGuest} className="w-full py-4 rounded-2xl border border-border text-muted-foreground font-semibold text-base hover:border-primary/40 hover:text-primary transition-colors mt-1 mb-4">Continue as Guest</button>
       <p className="text-center text-sm text-muted-foreground">{"Don't have an account? "}<button onClick={onSignup} className="text-primary font-bold">Create one</button></p>
     </div>
   );
 }
-
 // ── Signup (with validation) ──────────────────────────────────────────────────
+// ── Signup (Task 9: pw strength, field validation, terms checkbox) ───────────
 function SignupScreen({ signupType, setSignupType, onComplete, onBack }: { signupType: AccountType; setSignupType: (v: AccountType) => void; onComplete: (name: string, email: string, phone: string, type: AccountType) => void; onBack: () => void }) {
   const [vals, setVals] = useState<Record<string, string>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const personalFields = [{ key: "name", label: "Full Name", placeholder: "Reem Al-Rashidi", type: "text" }, { key: "email", label: "Email", placeholder: "reem@gmail.com", type: "text", inputMode: "email" as React.HTMLAttributes<HTMLInputElement>["inputMode"] }, { key: "phone", label: "Phone", placeholder: "+965 9XXX XXXX", type: "tel" }, { key: "password", label: "Password", placeholder: "••••••••", type: "password" }];
-  const bizFields = [{ key: "bname", label: "Business Name", placeholder: "Al-Salam Beauty", type: "text" }, { key: "email", label: "Business Email", placeholder: "contact@business.kw", type: "text", inputMode: "email" as React.HTMLAttributes<HTMLInputElement>["inputMode"] }, { key: "phone", label: "Phone", placeholder: "+965 9XXX XXXX", type: "tel" }, { key: "category", label: "Category", placeholder: "Hair & Nails", type: "text" }, { key: "password", label: "Password", placeholder: "••••••••", type: "password" }];
+  const [showPw, setShowPw] = useState(false);
+  const [agreedTerms, setAgreedTerms] = useState(false);
+  const [termsErr, setTermsErr] = useState(false);
+
+  const personalFields = [
+    { key: "name",     label: "Full Name",       placeholder: "Reem Al-Rashidi",       type: "text",     inputMode: undefined as React.HTMLAttributes<HTMLInputElement>["inputMode"] },
+    { key: "email",    label: "Email",            placeholder: "reem@gmail.com",        type: "text",     inputMode: "email"    as React.HTMLAttributes<HTMLInputElement>["inputMode"] },
+    { key: "phone",    label: "Phone (+965)",     placeholder: "9XXX XXXX",            type: "tel",      inputMode: "tel"      as React.HTMLAttributes<HTMLInputElement>["inputMode"] },
+    { key: "password", label: "Password",         placeholder: "Min. 8 characters",    type: "password", inputMode: undefined },
+  ];
+  const bizFields = [
+    { key: "bname",    label: "Business Name",    placeholder: "Al-Salam Beauty",      type: "text",     inputMode: undefined as React.HTMLAttributes<HTMLInputElement>["inputMode"] },
+    { key: "email",    label: "Business Email",   placeholder: "contact@business.kw",  type: "text",     inputMode: "email"    as React.HTMLAttributes<HTMLInputElement>["inputMode"] },
+    { key: "phone",    label: "Phone (+965)",     placeholder: "9XXX XXXX",            type: "tel",      inputMode: "tel"      as React.HTMLAttributes<HTMLInputElement>["inputMode"] },
+    { key: "category", label: "Category",         placeholder: "Hair & Nails",         type: "text",     inputMode: undefined },
+    { key: "password", label: "Password",         placeholder: "Min. 8 characters",    type: "password", inputMode: undefined },
+  ];
   const fields = signupType === "personal" ? personalFields : bizFields;
+  const pw = vals.password ?? "";
+  const strength = pwStrengthCalc(pw);
+
+  function validate(key: string, value: string) {
+    if (!value.trim()) return "This field is required";
+    if (key === "email" && (!value.includes("@") || !value.includes("."))) return "Enter a valid email address";
+    if (key === "phone" && value.replace(/\D/g,"").length < 8) return "Enter a valid 8-digit Kuwait number";
+    if (key === "password" && value.length < 8) return "Password must be at least 8 characters";
+    return "";
+  }
+
   function submit() {
     const e: Record<string, string> = {};
-    fields.forEach((f) => { if (!vals[f.key]?.trim()) e[f.key] = "Required"; });
+    fields.forEach(f => { const err = validate(f.key, vals[f.key] ?? ""); if (err) e[f.key] = err; });
     setErrors(e);
+    if (!agreedTerms) { setTermsErr(true); return; }
+    setTermsErr(false);
     if (!Object.keys(e).length) {
       const name = signupType === "personal" ? vals.name : vals.bname;
       onComplete(name, vals.email, vals.phone, signupType);
     }
   }
+
   return (
     <div className="flex flex-col min-h-screen px-6 pt-10 pb-8">
-      <button onClick={onBack} className="flex items-center gap-1 text-muted-foreground mb-8 self-start"><ChevronLeft size={18} /><span className="text-sm">Back</span></button>
-      <h1 className="text-4xl font-bold text-primary mb-1" style={{ fontFamily: "Inter, sans-serif", fontStyle: "normal" }}>Create account</h1>
-      <p className="text-muted-foreground text-sm mb-8">{"Join Kuwait's beauty marketplace"}</p>
-      <div className="flex gap-1 mb-6 bg-muted rounded-2xl p-1">{(["personal", "business"] as AccountType[]).map((t) => <button key={t} onClick={() => setSignupType(t)} className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all ${signupType === t ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>{t === "personal" ? "Personal" : "Business"}</button>)}</div>
-      <div className="flex flex-col gap-3 mb-6">
-        {fields.map((f) => (
-          <div key={f.key}>
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 block">{f.label}</label>
-            <input type={f.type} inputMode={f.inputMode} value={vals[f.key] ?? ""} onChange={(e) => setVals((p) => ({ ...p, [f.key]: e.target.value }))} placeholder={f.placeholder} className={`w-full px-4 py-3.5 rounded-xl bg-muted border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 text-sm ${errors[f.key] ? "border-destructive" : "border-border"}`} />
-            {errors[f.key] && <p className="text-xs text-destructive mt-1">This field is required</p>}
+      <button onClick={onBack} className="flex items-center gap-1 text-muted-foreground mb-6 self-start"><ChevronLeft size={18} /><span className="text-sm">Back</span></button>
+      <motion.div initial={{ opacity:0, y:-12 }} animate={{ opacity:1, y:0 }} transition={{ duration:0.35 }}>
+        <h1 className="text-3xl font-bold text-primary mb-1">Create account</h1>
+        <p className="text-muted-foreground text-sm mb-5">{"Join Kuwait's beauty marketplace"}</p>
+      </motion.div>
+      {/* Step indicator */}
+      <div className="flex items-center gap-0 mb-5">
+        {["Details","Verify","Done"].map((s,i) => (
+          <div key={s} className="flex items-center flex-1">
+            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 ${i===0?"bg-primary text-primary-foreground":"bg-muted text-muted-foreground border border-border"}`}>{i+1}</div>
+            <div className="flex-1 mx-1"><div className={`h-0.5 rounded-full ${i===0?"bg-primary":"bg-border"}`} /></div>
           </div>
         ))}
       </div>
-      <button onClick={submit} className="w-full py-4 rounded-2xl bg-accent text-accent-foreground font-bold text-base hover:opacity-90 transition-opacity">Create Account</button>
+      <div className="flex gap-1 mb-4 bg-muted rounded-2xl p-1">
+        {(["personal","business"] as AccountType[]).map(t => (
+          <button key={t} onClick={() => setSignupType(t)} className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all ${signupType===t?"bg-primary text-primary-foreground shadow-sm":"text-muted-foreground"}`}>
+            {t==="personal"?"Personal":"Business"}
+          </button>
+        ))}
+      </div>
+      <div className="flex flex-col gap-3 mb-4">
+        {fields.map((f, i) => {
+          const isPw = f.key === "password";
+          const val = vals[f.key] ?? "";
+          const err = errors[f.key];
+          const isOk = val.length > 0 && !err && !validate(f.key, val);
+          return (
+            <motion.div key={f.key} initial={{ opacity:0, y:8 }} animate={{ opacity:1, y:0 }} transition={{ delay: i*0.04 }}>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{f.label}</label>
+                {isPw && <button onClick={() => setShowPw(v=>!v)} className="text-xs text-primary font-bold">{showPw?"Hide":"Show"}</button>}
+              </div>
+              <div className="relative">
+                <input
+                  type={isPw?(showPw?"text":"password"):f.type}
+                  inputMode={f.inputMode}
+                  value={val}
+                  onBlur={() => { const e=validate(f.key,val); setErrors(p=>({...p,[f.key]:e})); }}
+                  onChange={e => { setVals(p=>({...p,[f.key]:e.target.value})); if(errors[f.key]) setErrors(p=>({...p,[f.key]:""})); }}
+                  placeholder={f.placeholder}
+                  className={`w-full px-4 py-3.5 pr-10 rounded-xl bg-muted border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 text-sm transition-colors ${err?"border-destructive bg-destructive/5":isOk?"border-green-500":"border-border"}`}
+                />
+                {val.length>0 && !isPw && (
+                  <motion.span initial={{ scale:0 }} animate={{ scale:1 }} transition={{ type:"spring", stiffness:300 }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-sm pointer-events-none">
+                    {isOk?"✅":"❌"}
+                  </motion.span>
+                )}
+              </div>
+              {/* Password strength bars */}
+              {isPw && pw.length>0 && (
+                <motion.div initial={{ opacity:0, height:0 }} animate={{ opacity:1, height:"auto" }} className="mt-2">
+                  <div className="flex gap-1 mb-1">
+                    {[1,2,3,4].map(lvl => (
+                      <motion.div key={lvl} className="flex-1 h-1.5 rounded-full"
+                        animate={{ backgroundColor: lvl<=strength.level?strength.color:"#e2d8f0" }}
+                        transition={{ duration:0.3 }} />
+                    ))}
+                  </div>
+                  {strength.level>0 && <p className="text-xs font-semibold" style={{ color:strength.color }}>{strength.label}</p>}
+                </motion.div>
+              )}
+              {err && <motion.p initial={{ opacity:0, y:-4 }} animate={{ opacity:1, y:0 }} className="text-xs text-destructive mt-1 flex items-center gap-1"><AlertCircle size={11} />{err}</motion.p>}
+            </motion.div>
+          );
+        })}
+      </div>
+      <button onClick={() => { setAgreedTerms(v=>!v); setTermsErr(false); }} className="flex items-start gap-3 mb-4 text-left">
+        <div className={`w-5 h-5 rounded flex-shrink-0 mt-0.5 flex items-center justify-center border-2 transition-colors ${agreedTerms?"bg-primary border-primary":termsErr?"border-destructive":"border-border"}`}>
+          {agreedTerms && <Check size={11} className="text-white" />}
+        </div>
+        <span className="text-sm text-muted-foreground leading-relaxed">I agree to the <span className="text-primary font-semibold">Terms of Service</span> and <span className="text-primary font-semibold">Privacy Policy</span></span>
+      </button>
+      {termsErr && <motion.p initial={{ opacity:0 }} animate={{ opacity:1 }} className="text-xs text-destructive -mt-2 mb-3 flex items-center gap-1"><AlertCircle size={11} />You must accept the terms</motion.p>}
+      <motion.button onClick={submit} whileTap={{ scale:0.97 }} className="w-full py-4 rounded-2xl bg-accent text-accent-foreground font-bold text-base hover:opacity-90 transition-opacity">Create Account</motion.button>
     </div>
   );
 }
-
 // ── Forgot Password ───────────────────────────────────────────────────────────
 function ForgotPasswordPage({ onBack }: { onBack: () => void }) {
   const [email, setEmail] = useState("");
@@ -792,6 +932,7 @@ function BookingFlow({ provider, accountType, days, selectedDate, setSelectedDat
   const takenTimes = accountType === "personal" ? bookedSlots.filter((s) => s.dateIdx === dayData?.dayIdx).map((s) => s.time) : [];
   if (sent) return (
     <div className="flex flex-col items-center justify-center min-h-[70vh] px-8 text-center">
+
       <motion.div
         initial={{ scale: 0, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
@@ -948,31 +1089,76 @@ function BusinessBookings({ bookingRequests, onAccept, onReject }: { bookingRequ
 }
 
 // ── Provider Dashboard (clickable chart, dynamic revenue) ─────────────────────
-function ProviderDashboard({ accountName, onCalendar, onRevenueDay }: { accountName: string; onCalendar: () => void; onRevenueDay: (day: string) => void }) {
+// ── REVENUE_DATA for Task 8 charts ───────────────────────────────────────────
+const REVENUE_DATA = [
+  { day: "Sun", revenue: 140, appts: 3 }, { day: "Mon", revenue: 85, appts: 2 },
+  { day: "Tue", revenue: 120, appts: 4 }, { day: "Wed", revenue: 95, appts: 3 },
+  { day: "Thu", revenue: 160, appts: 5 }, { day: "Fri", revenue: 210, appts: 6 },
+  { day: "Sat", revenue: 185, appts: 5 },
+];
+const DONUT_DATA = [
+  { name: "Haircut", value: 48, color: "#6B21A8" },
+  { name: "Beard",   value: 26, color: "#9D4EDD" },
+  { name: "Package", value: 16, color: "#F8CD42" },
+  { name: "Other",   value: 10, color: "#C4A8E0" },
+];
+
+function ProviderDashboard({ accountName, onCalendar, onRevenue }: { accountName: string; onCalendar: () => void; onRevenue: () => void }) {
   const firstName = accountName.split(" ")[0];
-  const todayRevStr = `${TODAY_REVENUE} KWD`;
   return (
-    <div className="flex flex-col px-5 pt-2 pb-4 gap-6">
+    <div className="flex flex-col px-5 pt-2 pb-4 gap-5">
       <div><p className="text-sm text-muted-foreground">{getTimeGreeting()},</p><h1 className="text-2xl font-bold text-foreground">{firstName} 👋</h1></div>
+
+      {/* Task 8 — Small Multiples: KPI tiles */}
       <div className="grid grid-cols-3 gap-2.5">
-        {[{ value: "4", sub: "appts today", icon: CalendarDays }, { value: todayRevStr, sub: "today", icon: DollarSign }, { value: "31", sub: "clients/week", icon: Users }].map(({ value, sub, icon: Icon }, i) => <div key={i} className="bg-card border border-border rounded-2xl p-3 flex flex-col gap-1.5"><Icon size={16} className="text-primary" /><p className="text-sm font-bold text-foreground leading-tight">{value}</p><p className="text-[10px] text-muted-foreground leading-tight">{sub}</p></div>)}
+        {[{ value: "4", sub: "appts today", icon: CalendarDays }, { value: "140 KWD", sub: "today", icon: DollarSign }, { value: "31", sub: "clients/wk", icon: Users }].map(({ value, sub, icon: Icon }, i) => (
+          <div key={i} className="bg-card border border-border rounded-2xl p-3 flex flex-col gap-1.5">
+            <Icon size={16} className="text-primary" />
+            <p className="text-sm font-bold text-foreground leading-tight">{value}</p>
+            <p className="text-[10px] text-muted-foreground leading-tight">{sub}</p>
+          </div>
+        ))}
       </div>
+
+      {/* Task 8 — Area Chart with Datatips */}
       <div className="bg-card border border-border rounded-2xl p-4">
-        <div className="flex items-center justify-between mb-1"><h2 className="text-sm font-bold text-foreground">Revenue — This Week</h2><div className="flex items-center gap-2"><span className="text-xs text-primary font-bold flex items-center gap-0.5"><TrendingUp size={12} />+18%</span><button onClick={() => onRevenueDay(REVENUE_DATA.find(d => d.dayIdx === TODAY_IDX)?.day ?? "Fri")} className="text-xs text-muted-foreground font-semibold hover:text-primary transition-colors">See all</button></div></div>
-        <p className="text-xs text-muted-foreground mb-3">Tap a day dot for details</p>
-        <ResponsiveContainer width="100%" height={110}>
-          <AreaChart data={REVENUE_DATA} margin={{ top: 4, right: 0, left: -30, bottom: 0 }}
-            onClick={(data) => { if (data?.activePayload?.[0]) { const d = data.activePayload[0].payload; onRevenueDay(d.day); } }}>
-            <defs><linearGradient id="dashRevGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#6B21A8" stopOpacity={0.25} /><stop offset="100%" stopColor="#6B21A8" stopOpacity={0} /></linearGradient></defs>
-            <XAxis dataKey="day" tick={{ fontSize: 10, fill: "#7C5C9E" }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fontSize: 9, fill: "#7C5C9E" }} axisLine={false} tickLine={false} />
-            <Tooltip contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "10px", fontSize: "11px", padding: "6px 10px" }} labelStyle={{ color: "var(--foreground)", fontWeight: 700, fontSize: "11px" }} formatter={(value: number) => [`${value} KWD`, ""]} cursor={{ stroke: "#6B21A8", strokeWidth: 1, strokeDasharray: "4 4" }} />
-            <Area type="monotone" dataKey="revenue" stroke="#F8CD42" strokeWidth={2.5} fill="url(#dashRevGrad)" dot={{ r: 3, fill: "#F8CD42", stroke: "#6B21A8", strokeWidth: 1.5, cursor: "pointer" }} activeDot={{ r: 6, fill: "#F8CD42", stroke: "#6B21A8", strokeWidth: 2, cursor: "pointer" }} />
+        <div className="flex items-center justify-between mb-1">
+          <div>
+            <p className="text-xs font-bold text-foreground">Revenue — This Week</p>
+            <p className="text-[10px] text-muted-foreground">Tap a dot for details (Datatip)</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-bold text-green-600 flex items-center gap-0.5">▲ +18%</span>
+            <button onClick={onRevenue} className="text-[10px] text-primary font-bold">See all</button>
+          </div>
+        </div>
+        <ResponsiveContainer width="100%" height={100}>
+          <AreaChart data={REVENUE_DATA} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
+            <defs>
+              <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#6B21A8" stopOpacity={0.18} />
+                <stop offset="95%" stopColor="#6B21A8" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <XAxis dataKey="day" tick={{ fontSize: 9, fill: "#7C5C9E" }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fontSize: 8, fill: "#7C5C9E" }} axisLine={false} tickLine={false} />
+            <Tooltip
+              contentStyle={{ background: "#1B1324", border: "none", borderRadius: "10px", fontSize: "11px", padding: "6px 10px" }}
+              labelStyle={{ color: "#fff", fontWeight: 700 }}
+              itemStyle={{ color: "#F8CD42" }}
+              formatter={(v: number, _: string, props: { payload: { appts: number } }) => [`${v} KWD · ${props.payload.appts} appts`]}
+            />
+            <Area type="monotone" dataKey="revenue" stroke="#F8CD42" strokeWidth={2.5} fill="url(#revGrad)" dot={{ fill: "#F8CD42", r: 3, strokeWidth: 0 }} activeDot={{ r: 5, fill: "#6B21A8" }} />
           </AreaChart>
         </ResponsiveContainer>
       </div>
+
+      {/* Today's schedule */}
       <div>
-        <div className="flex items-center justify-between mb-3"><h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{"Today's Schedule"}</h2><button onClick={onCalendar} className="text-xs text-primary font-bold">Full calendar</button></div>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{"Today's Schedule"}</h2>
+          <button onClick={onCalendar} className="text-xs text-primary font-bold">Full calendar</button>
+        </div>
         <div className="flex flex-col gap-2">{SCHEDULE_BY_DAY[1].map((a) => <div key={a.id} className="flex items-center gap-3 bg-card border border-border rounded-2xl px-4 py-3"><div className="flex flex-col items-end min-w-[52px]"><span className="text-xs font-bold text-primary">{a.time}:00</span><span className="text-[10px] text-muted-foreground">{a.duration}</span></div><div className="w-px h-8 bg-border flex-shrink-0" /><div className="flex-1 min-w-0"><p className="text-sm font-semibold text-foreground">{a.client}</p><p className="text-xs text-muted-foreground">{a.service}</p></div></div>)}</div>
       </div>
     </div>
@@ -1411,7 +1597,7 @@ function SettingsScreen({ accounts, activeAccount, accountType, onSwitchAccount,
         <div>
           <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Business</p>
           <div className="bg-card border border-border rounded-2xl overflow-hidden divide-y divide-border">
-            {[{ label: "Business Profile", icon: Edit3, action: onBusinessProfile }, { label: "Services", icon: Sparkles, action: onServiceSetup }, { label: "Revenue & Analytics", icon: BarChart2, action: onRevenue }].map(({ label, icon: Icon, action }) => <button key={label} onClick={action} className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-muted/50 transition-colors"><Icon size={17} className="text-muted-foreground flex-shrink-0" /><span className="text-sm font-semibold text-foreground flex-1 text-left">{label}</span><ChevronRight size={15} className="text-muted-foreground" /></button>)}
+            {[{ label: "Business Profile", icon: Edit3, action: onBusinessProfile }, { label: "Services", icon: Sparkles, action: onServiceSetup }].map(({ label, icon: Icon, action }) => <button key={label} onClick={action} className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-muted/50 transition-colors"><Icon size={17} className="text-muted-foreground flex-shrink-0" /><span className="text-sm font-semibold text-foreground flex-1 text-left">{label}</span><ChevronRight size={15} className="text-muted-foreground" /></button>)}
           </div>
         </div>
       )}
@@ -1476,47 +1662,114 @@ function ChangePasswordSheet({ onClose }: { onClose: () => void }) {
 }
 
 // ── Revenue Detail Page ───────────────────────────────────────────────────────
-function RevenueDetailPage({ selectedDay, onBack, onDaySelect }: { selectedDay: string; onBack: () => void; onDaySelect: (d: string) => void }) {
+const curMonth = NOW.getMonth();
+const curYear = NOW.getFullYear();
+
+// ── Privacy / About / Gift / Invite / Favorites ───────────────────────────────// ── Task 8: Revenue Detail Page (Bar Chart + Donut Chart + Heat Map) ─────────
+function RevenueDetailPage({ onBack, selectedDay, onDaySelect }: { onBack: () => void; selectedDay: string; onDaySelect: (d: string) => void }) {
   const [viewAll, setViewAll] = useState(false);
-  const dayData = REVENUE_DATA.find((d) => d.day === selectedDay) ?? REVENUE_DATA[4];
-  const clients = SCHEDULE_BY_DAY[dayData.dayIdx] ?? [];
-  const displayDays = viewAll ? REVENUE_DATA : [dayData];
+  const [activeHeat, setActiveHeat] = useState<number | null>(null);
+  const dayData = REVENUE_DATA.find(d => d.day === selectedDay) ?? REVENUE_DATA[4];
+  const clients = SCHEDULE_BY_DAY[dayData ? REVENUE_DATA.indexOf(dayData) % 7 : 4] ?? [];
+  const heatIntensity = [0,0,2,3,4,4,3,2,3,4,4,3,2,1,3,4,4,3,2,1,4,4,3,2,1,3,4,4,2,0];
+  const heatColors = ["#F3EDF8","#C4A8E0","#9D4EDD","#7C22AA","#4A0080"];
   return (
     <div className="flex flex-col px-5 pt-2 pb-4 gap-5">
       <div className="flex items-center justify-between">
         <div><h1 className="text-2xl font-bold text-foreground">Revenue</h1><p className="text-sm text-muted-foreground mt-0.5">{viewAll ? "This Week" : selectedDay}</p></div>
-        <button onClick={() => setViewAll((v) => !v)} className="text-xs text-primary font-bold">{viewAll ? "Day View" : "See All"}</button>
+        <button onClick={() => setViewAll(v => !v)} className="text-xs text-primary font-bold">{viewAll ? "Day View" : "See All"}</button>
       </div>
       {!viewAll ? (
         <>
           <div className="bg-primary rounded-3xl p-6">
             <p className="text-primary-foreground/60 text-xs uppercase tracking-wider mb-1">Revenue — {selectedDay}</p>
-            <p className="text-4xl font-bold text-white">{dayData.revenue} <span className="text-xl font-normal text-white/60">KWD</span></p>
-            <p className="text-white/50 text-xs mt-2">{clients.length} appointments</p>
+            <p className="text-4xl font-bold text-white">{dayData?.revenue ?? 0} <span className="text-xl font-normal text-white/60">KWD</span></p>
+            <p className="text-white/50 text-xs mt-2">{dayData?.appts ?? 0} appointments</p>
           </div>
-          <div>
-            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Clients — {selectedDay}</p>
-            {clients.length === 0 ? <div className="bg-card border border-border rounded-2xl py-8 text-center"><p className="text-muted-foreground text-sm">No appointments this day</p></div> : (
-              <div className="flex flex-col gap-2">{clients.map((a) => <div key={a.id} className="bg-card border border-border rounded-2xl px-4 py-3 flex items-center justify-between"><div><p className="text-sm font-semibold text-foreground">{a.client}</p><p className="text-xs text-muted-foreground">{a.service} · {a.time}:00 · {a.duration}</p></div><span className="text-sm font-bold text-primary">{a.price}</span></div>)}</div>
-            )}
-          </div>
+          <div className="flex flex-col gap-2">{clients.slice(0,3).map(a => <div key={a.id} className="bg-card border border-border rounded-2xl px-4 py-3 flex items-center justify-between"><div><p className="text-sm font-semibold text-foreground">{a.client}</p><p className="text-xs text-muted-foreground">{a.service}</p></div><span className="text-sm font-bold text-primary">{a.price}</span></div>)}</div>
         </>
       ) : (
         <>
           <div className="grid grid-cols-2 gap-3">
-            <div className="bg-card border border-border rounded-2xl p-4"><p className="text-xs text-muted-foreground mb-1">Total Week</p><p className="text-2xl font-bold text-primary">{REVENUE_DATA.reduce((s, d) => s + d.revenue, 0)} <span className="text-sm font-normal text-muted-foreground">KWD</span></p></div>
-            <div className="bg-card border border-border rounded-2xl p-4"><p className="text-xs text-muted-foreground mb-1">Best Day</p><p className="text-2xl font-bold text-foreground">{REVENUE_DATA.reduce((best, d) => d.revenue > best.revenue ? d : best).day}</p></div>
+            <div className="bg-card border border-border rounded-2xl p-4"><p className="text-xs text-muted-foreground mb-1">Total Week</p><p className="text-2xl font-bold text-primary">{REVENUE_DATA.reduce((s,d)=>s+d.revenue,0)} <span className="text-sm text-muted-foreground">KWD</span></p></div>
+            <div className="bg-card border border-border rounded-2xl p-4"><p className="text-xs text-muted-foreground mb-1">Best Day</p><p className="text-2xl font-bold text-foreground">{REVENUE_DATA.reduce((b,d)=>d.revenue>b.revenue?d:b).day}</p></div>
           </div>
-          <div className="flex flex-col gap-2">
-            {REVENUE_DATA.map((d) => (
-              <button key={d.day} onClick={() => { onDaySelect(d.day); setViewAll(false); }} className="bg-card border border-border rounded-2xl px-4 py-3 flex items-center justify-between hover:border-primary/40 transition-colors">
-                <div><p className="text-sm font-semibold text-foreground">{d.day}</p><p className="text-xs text-muted-foreground">{(SCHEDULE_BY_DAY[d.dayIdx] ?? []).length} clients</p></div>
-                <div className="flex items-center gap-2">
-                  <div className="h-2 rounded-full bg-primary/20 overflow-hidden w-20"><div className="h-full bg-primary rounded-full" style={{ width: `${(d.revenue / 220) * 100}%` }} /></div>
-                  <span className="text-sm font-bold text-primary w-16 text-right">{d.revenue} KWD</span>
-                </div>
-              </button>
-            ))}
+          {/* Bar chart — Task 8 */}
+          <div className="bg-card border border-border rounded-2xl p-4">
+            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Daily Revenue</p>
+            <ResponsiveContainer width="100%" height={90}>
+              <BarChart data={REVENUE_DATA} barSize={20} margin={{ top: 0, right: 4, left: -24, bottom: 0 }}>
+                <XAxis dataKey="day" tick={{ fontSize: 9, fill: "#7C5C9E" }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 8, fill: "#7C5C9E" }} axisLine={false} tickLine={false} />
+                <Tooltip contentStyle={{ background: "#1B1324", border: "none", borderRadius: "10px", fontSize: "11px", padding: "5px 10px" }} labelStyle={{ color: "#fff" }} itemStyle={{ color: "#F8CD42" }} formatter={(v: number) => [`${v} KWD`]} />
+                <Bar dataKey="revenue" radius={[4,4,0,0]}>
+                  {REVENUE_DATA.map((d, i) => <Cell key={i} fill={d.day === selectedDay ? "#F8CD42" : "#6B21A8"} />)}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          {/* Donut chart — Task 8 */}
+          <div className="bg-card border border-border rounded-2xl p-4">
+            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Bookings by Category</p>
+            <div className="flex items-center gap-4">
+              <ResponsiveContainer width={90} height={90}>
+                <PieChart>
+                  <Pie data={DONUT_DATA} cx="50%" cy="50%" innerRadius={24} outerRadius={42} dataKey="value" strokeWidth={0}>
+                    {DONUT_DATA.map((d, i) => <Cell key={i} fill={d.color} />)}
+                  </Pie>
+                  <Tooltip contentStyle={{ background: "#1B1324", border: "none", borderRadius: "10px", fontSize: "11px", padding: "5px 10px" }} formatter={(v: number) => [`${v}%`]} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="flex flex-col gap-1.5">{DONUT_DATA.map(d => <div key={d.name} className="flex items-center gap-2"><div className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ background: d.color }} /><span className="text-xs text-foreground">{d.name}</span><span className="text-xs text-muted-foreground ml-auto">{d.value}%</span></div>)}</div>
+            </div>
+          </div>
+          {/* Heat map — Task 8 */}
+          <div className="bg-card border border-border rounded-2xl p-4">
+            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Booking Activity — This Month</p>
+            <div className="flex gap-0.5 mb-1">{["S","M","T","W","T","F","S"].map((d,i) => <div key={i} className="flex-1 text-center text-[9px] text-muted-foreground font-bold">{d}</div>)}</div>
+            <div className="grid gap-1" style={{ gridTemplateColumns:"repeat(7,1fr)" }}>
+              {[0,1,2].map(i => <div key={"e"+i} />)}
+              {heatIntensity.map((v,i) => (
+                <motion.div key={i} className="aspect-square rounded cursor-pointer relative"
+                  style={{ background: v===0 ? "#F3EDF8" : heatColors[v-1] }}
+                  whileTap={{ scale: 0.8 }}
+                  onClick={() => setActiveHeat(activeHeat===i ? null : i)}
+                  initial={{ opacity:0, scale:0.5 }} animate={{ opacity:1, scale:1 }}
+                  transition={{ delay: i*0.01, duration:0.2 }}>
+                  {activeHeat===i && (
+                    <motion.div initial={{ opacity:0, y:-4 }} animate={{ opacity:1, y:0 }}
+                      className="absolute -top-7 left-1/2 -translate-x-1/2 bg-foreground text-white text-[9px] font-bold px-1.5 py-0.5 rounded z-10 whitespace-nowrap">
+                      Day {i+1}: {v===0?"0":(v*2+1)} bookings
+                    </motion.div>
+                  )}
+                </motion.div>
+              ))}
+            </div>
+            <div className="flex items-center gap-1 mt-2">
+              <span className="text-[9px] text-muted-foreground">Low</span>
+              {heatColors.map((c,i) => <div key={i} className="w-3 h-3 rounded-sm" style={{ background:c }} />)}
+              <span className="text-[9px] text-muted-foreground">High</span>
+            </div>
+          </div>
+          {/* Rating histogram — Task 8 */}
+          <div className="bg-card border border-border rounded-2xl p-4">
+            <div className="flex gap-4 items-start">
+              <div className="text-center flex-shrink-0"><div className="text-3xl font-bold text-foreground leading-none">4.9</div><div className="flex mt-1 justify-center">{[1,2,3,4,5].map(s=><Star key={s} size={10} className="fill-[#F8CD42] text-[#F8CD42]" />)}</div><div className="text-xs text-muted-foreground mt-1">428 reviews</div></div>
+              <div className="flex-1 flex flex-col gap-1">
+                {[{s:5,pct:72},{s:4,pct:18},{s:3,pct:6},{s:2,pct:3},{s:1,pct:1}].map(({s,pct}) => (
+                  <div key={s} className="flex items-center gap-2">
+                    <span className="text-[10px] text-muted-foreground w-3 text-right">{s}</span>
+                    <Star size={9} className="fill-[#F8CD42] text-[#F8CD42] flex-shrink-0" />
+                    <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                      <motion.div className="h-full bg-[#F8CD42] rounded-full"
+                        initial={{ width:0 }} animate={{ width:`${pct}%` }}
+                        transition={{ duration:0.6, delay:(5-s)*0.07, ease:"easeOut" }} />
+                    </div>
+                    <span className="text-[10px] text-muted-foreground w-6 text-right">{pct}%</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </>
       )}
@@ -1524,10 +1777,149 @@ function RevenueDetailPage({ selectedDay, onBack, onDaySelect }: { selectedDay: 
   );
 }
 
-const curMonth = NOW.getMonth();
-const curYear = NOW.getFullYear();
+// ── Task 9: Payment Card Screen (full validated form) ─────────────────────────
+function PaymentCardScreen({ amount, recipient, onBack, onSuccess }: { amount: number; recipient: string; onBack: () => void; onSuccess: () => void }) {
+  const [groups, setGroups] = useState(["","","",""]);
+  const [expiry, setExpiry] = useState("");
+  const [cvv, setCvv] = useState("");
+  const [cardName, setCardName] = useState("");
+  const [saveCard, setSaveCard] = useState(true);
+  const [errors, setErrors] = useState<Record<string,string>>({});
+  const [processing, setProcessing] = useState(false);
+  const [done, setDone] = useState(false);
+  const refs = [useRef<HTMLInputElement>(null),useRef<HTMLInputElement>(null),useRef<HTMLInputElement>(null),useRef<HTMLInputElement>(null)];
 
-// ── Privacy / About / Gift / Invite / Favorites ───────────────────────────────
+  function fmtExp(v: string) { const d=v.replace(/\D/g,"").slice(0,4); return d.length>=3?d.slice(0,2)+"/"+d.slice(2):d; }
+  function validateExp(v: string) {
+    const p=v.split("/"); if(p.length!==2||p[0].length!==2||p[1].length!==2) return "Invalid format";
+    const m=parseInt(p[0]),y=parseInt("20"+p[1]),now=new Date();
+    if(m<1||m>12) return "Invalid month";
+    if(y<now.getFullYear()||(y===now.getFullYear()&&m<now.getMonth()+1)) return "Card expired";
+    return "";
+  }
+
+  function submit() {
+    const e: Record<string,string> = {};
+    if(groups.join("").length<16) e.card="Enter a valid 16-digit card number";
+    const expErr=validateExp(expiry); if(expErr) e.expiry=expErr;
+    if(cvv.length<3) e.cvv="3 digits required";
+    if(!cardName.trim()) e.name="Name is required";
+    setErrors(e);
+    if(Object.keys(e).length) return;
+    setProcessing(true);
+    setTimeout(()=>{ setProcessing(false); setDone(true); }, 1600);
+  }
+
+  if(done) return (
+    <div className="flex flex-col items-center justify-center min-h-screen px-8 text-center">
+      <motion.div initial={{ scale:0 }} animate={{ scale:1 }} transition={{ type:"spring", stiffness:260, damping:18 }}
+        className="w-24 h-24 rounded-full bg-green-100 border-2 border-green-500 flex items-center justify-center mb-6">
+        <motion.div initial={{ scale:0 }} animate={{ scale:1 }} transition={{ delay:0.2, type:"spring" }}>
+          <Check size={40} className="text-green-600" />
+        </motion.div>
+      </motion.div>
+      <motion.div initial={{ opacity:0, y:16 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.3 }}>
+        <h1 className="text-2xl font-bold text-foreground mb-2">Payment Successful!</h1>
+        <p className="text-muted-foreground mb-1">Gift card of <span className="font-bold text-primary">{amount} KWD</span> sent to</p>
+        <p className="font-bold text-foreground mb-8">{recipient}</p>
+        <button onClick={onSuccess} className="w-full py-4 rounded-2xl bg-primary text-primary-foreground font-bold hover:opacity-90 transition-opacity">Back to Gift Cards</button>
+      </motion.div>
+    </div>
+  );
+
+  return (
+    <div className="flex flex-col px-5 pt-2 pb-8 gap-4">
+      <div><h1 className="text-2xl font-bold text-foreground">Payment</h1><p className="text-sm text-muted-foreground mt-0.5">Secure checkout</p></div>
+      {/* Card visual */}
+      <div className="relative h-44 rounded-3xl overflow-hidden" style={{ background:"linear-gradient(135deg,#6B21A8,#9D4EDD)" }}>
+        <div className="absolute top-0 right-0 w-40 h-40 rounded-full bg-white/5 -translate-y-10 translate-x-10" />
+        <div className="absolute inset-0 p-5 flex flex-col justify-between">
+          <div className="flex justify-between items-start"><div className="text-white/40 text-xs font-bold tracking-widest">CREDIT</div></div>
+          <div><div className="font-mono text-white text-sm tracking-[0.18em] mb-3">{groups.map(g=>g.padEnd(4,"•").slice(0,4)).join("  ")}</div>
+            <div className="flex justify-between">
+              <div><p className="text-white/40 text-[8px] uppercase tracking-widest mb-0.5">Card Holder</p><p className="text-white text-xs font-bold">{cardName||"YOUR NAME"}</p></div>
+              <div><p className="text-white/40 text-[8px] uppercase tracking-widest mb-0.5">Expires</p><p className="text-white text-xs font-bold">{expiry||"MM/YY"}</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      {/* Order summary */}
+      <div className="bg-primary/5 border border-primary/15 rounded-2xl p-4">
+        <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Order Summary</p>
+        <div className="flex justify-between text-sm mb-1"><span className="text-muted-foreground">Gift Card — {amount} KWD</span><span>{amount}.000 KWD</span></div>
+        <div className="flex justify-between text-sm mb-2"><span className="text-muted-foreground">Service Fee</span><span>0.500 KWD</span></div>
+        <div className="flex justify-between font-bold"><span>Total</span><span className="text-primary">{(amount+0.5).toFixed(3)} KWD</span></div>
+      </div>
+      {/* Card number — 4 groups, auto-advance */}
+      <div>
+        <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5 block">Card Number <span className="text-[9px] font-normal normal-case tracking-normal">— Structured format, auto-advances</span></label>
+        <div className="flex gap-2">
+          {groups.map((g,i) => (
+            <input key={i} ref={refs[i]} value={g} type="tel" inputMode="numeric" maxLength={4}
+              placeholder="0000"
+              onChange={e => {
+                const v=e.target.value.replace(/\D/g,"").slice(0,4);
+                setGroups(p=>{const n=[...p];n[i]=v;return n;});
+                if(v.length===4&&i<3) refs[i+1].current?.focus();
+                if(errors.card) setErrors(p=>({...p,card:""}));
+              }}
+              className={`flex-1 text-center font-mono font-bold text-sm py-3 rounded-xl bg-muted border focus:outline-none focus:ring-2 focus:ring-primary/40 transition-colors ${errors.card?"border-destructive":g.length===4?"border-green-500":"border-border"}`}
+            />
+          ))}
+        </div>
+        {errors.card && <motion.p initial={{ opacity:0 }} animate={{ opacity:1 }} className="text-xs text-destructive mt-1 flex items-center gap-1"><AlertCircle size={11} />{errors.card}</motion.p>}
+      </div>
+      {/* Expiry + CVV */}
+      <div className="flex gap-3">
+        <div className="flex-1">
+          <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5 block">Expiry (MM/YY)</label>
+          <input value={expiry} type="tel" inputMode="numeric" maxLength={5} placeholder="MM/YY"
+            onChange={e => { setExpiry(fmtExp(e.target.value)); if(errors.expiry) setErrors(p=>({...p,expiry:""})); }}
+            onBlur={() => { const err=validateExp(expiry); if(err) setErrors(p=>({...p,expiry:err})); }}
+            className={`w-full px-4 py-3.5 rounded-xl bg-muted border text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition-colors ${errors.expiry?"border-destructive":expiry.length===5&&!validateExp(expiry)?"border-green-500":"border-border"}`}
+          />
+          {errors.expiry && <motion.p initial={{ opacity:0 }} animate={{ opacity:1 }} className="text-xs text-destructive mt-1 flex items-center gap-1"><AlertCircle size={11} />{errors.expiry}</motion.p>}
+        </div>
+        <div className="w-28">
+          <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5 block">CVV</label>
+          <input value={cvv} type="password" inputMode="numeric" maxLength={3} placeholder="•••"
+            onChange={e => { setCvv(e.target.value.replace(/\D/g,"").slice(0,3)); if(errors.cvv) setErrors(p=>({...p,cvv:""})); }}
+            onBlur={() => { if(cvv.length<3) setErrors(p=>({...p,cvv:"3 digits required"})); }}
+            className={`w-full px-3 py-3.5 rounded-xl bg-muted border text-sm text-center font-bold focus:outline-none focus:ring-2 focus:ring-primary/40 transition-colors ${errors.cvv?"border-destructive":cvv.length===3?"border-green-500":"border-border"}`}
+          />
+          {errors.cvv && <motion.p initial={{ opacity:0 }} animate={{ opacity:1 }} className="text-xs text-destructive mt-1 flex items-center gap-1"><AlertCircle size={11} />{errors.cvv}</motion.p>}
+        </div>
+      </div>
+      {/* Name */}
+      <div>
+        <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5 block">Name on Card</label>
+        <input value={cardName} type="text" placeholder="REEM AL-RASHIDI"
+          onChange={e => { setCardName(e.target.value.toUpperCase()); if(errors.name) setErrors(p=>({...p,name:""})); }}
+          onBlur={() => { if(!cardName.trim()) setErrors(p=>({...p,name:"Name is required"})); }}
+          className={`w-full px-4 py-3.5 rounded-xl bg-muted border text-sm font-bold tracking-wider uppercase focus:outline-none focus:ring-2 focus:ring-primary/40 transition-colors ${errors.name?"border-destructive":cardName.length>2?"border-green-500":"border-border"}`}
+        />
+        {errors.name && <motion.p initial={{ opacity:0 }} animate={{ opacity:1 }} className="text-xs text-destructive mt-1 flex items-center gap-1"><AlertCircle size={11} />{errors.name}</motion.p>}
+      </div>
+      <button onClick={() => setSaveCard(v=>!v)} className="flex items-center gap-3">
+        <div className={`w-5 h-5 rounded flex-shrink-0 flex items-center justify-center border-2 transition-colors ${saveCard?"bg-primary border-primary":"border-border"}`}>
+          {saveCard && <Check size={11} className="text-white" />}
+        </div>
+        <span className="text-sm text-muted-foreground">Save card for future bookings</span>
+      </button>
+      <motion.button onClick={submit} whileTap={{ scale:0.97 }} disabled={processing}
+        className="w-full py-4 rounded-2xl bg-primary text-primary-foreground font-bold text-base hover:opacity-90 transition-opacity disabled:opacity-70 flex items-center justify-center gap-2">
+        {processing ? (
+          <><motion.div animate={{ rotate:360 }} transition={{ repeat:Infinity, duration:0.8, ease:"linear" }} className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full" />Processing…</>
+        ) : (
+          <><Shield size={14} /> Pay {(amount+0.5).toFixed(3)} KWD</>
+        )}
+      </motion.button>
+      <p className="text-center text-xs text-muted-foreground flex items-center justify-center gap-1"><Shield size={10} />256-bit SSL encryption</p>
+    </div>
+  );
+}
+
+
 function PrivacyPage() {
   const sections = [{ title:"Data We Collect", body:"We collect information you provide when creating an account (name, email, phone) and booking data. We also collect device information and usage data to improve the app." }, { title:"How We Use Your Data", body:"Your data is used to process bookings, send reminders, personalize recommendations, and improve our services. We never sell your personal data to third parties." }, { title:"Data Sharing", body:"We share only the information necessary with service providers you book with. We may share anonymized data for analytics." }, { title:"Your Rights", body:"You have the right to access, correct, or delete your personal data at any time." }, { title:"Data Security", body:"We use industry-standard encryption (TLS/SSL) for data in transit and at rest." }];
   return (
@@ -1541,8 +1933,8 @@ function AboutUsPage() {
   );
 }
 
-function GiftCardsPage() {
-  const amounts = [5,10,20,50]; const [selected,setSelected]=useState(20); const [recipient,setRecipient]=useState(""); const [message,setMessage]=useState(""); const [sent,setSent]=useState(false);
+function GiftCardsPage({ onPay }: { onPay: (amount: number, recipient: string) => void }) {
+  const amounts = [5,10,20,50]; const [selected,setSelected]=useState(20); const [recipient,setRecipient]=useState(""); const [message,setMessage]=useState(""); const [sent,setSent]=useState(false); const [recipientErr,setRecipientErr]=useState("");
   if (sent) return (
     <div className="flex flex-col items-center justify-center min-h-[70vh] px-8 text-center">
       <motion.div
@@ -1571,7 +1963,14 @@ function GiftCardsPage() {
     <div className="flex flex-col px-5 pt-2 pb-4 gap-6"><div><h1 className="text-2xl font-bold text-foreground">Gift Cards</h1><p className="text-sm text-muted-foreground mt-0.5">Share the gift of wellness</p></div><div className="relative h-36 rounded-3xl overflow-hidden bg-gradient-to-br from-primary to-[#9D4EDD]"><div className="absolute inset-0 flex flex-col justify-between p-5"><div className="flex items-center gap-2"><Sparkles size={20} className="text-[#F8CD42]"/><span className="text-white font-bold" style={{fontFamily:"Inter,sans-serif",fontSize:"1.2rem"}}>Ehjezly</span></div><div><p className="text-white/60 text-xs uppercase tracking-widest">Gift Card</p><p className="text-white text-3xl font-bold">{selected} KWD</p></div></div></div>
     <div><p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Select Amount</p><div className="grid grid-cols-4 gap-2">{amounts.map((a)=><button key={a} onClick={()=>setSelected(a)} className={`py-3 rounded-2xl text-sm font-bold border transition-all ${selected===a?"bg-primary text-primary-foreground border-primary":"bg-card text-foreground border-border hover:border-primary/40"}`}>{a} KWD</button>)}</div></div>
     <div className="flex flex-col gap-4"><div><label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5 block">{"Recipient's Email or Phone"}</label><input value={recipient} onChange={(e)=>setRecipient(e.target.value)} placeholder="noura@gmail.com" type="text" inputMode="email" className="w-full px-4 py-3 rounded-xl bg-muted border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 text-sm"/></div><div><label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5 block">Message (optional)</label><textarea value={message} onChange={(e)=>setMessage(e.target.value)} placeholder="Treat yourself!" rows={3} className="w-full px-4 py-3 rounded-xl bg-muted border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 text-sm resize-none"/></div></div>
-    <button onClick={()=>recipient&&setSent(true)} disabled={!recipient} className="w-full py-4 rounded-2xl bg-accent text-accent-foreground font-bold text-base hover:opacity-90 disabled:opacity-40">Send Gift Card — {selected} KWD</button></div>
+    {recipientErr && <p className="text-xs text-destructive mb-2 flex items-center gap-1"><AlertCircle size={11} />{recipientErr}</p>}
+    <motion.button whileTap={{ scale: 0.97 }} onClick={() => {
+      if (!recipient.trim()) { setRecipientErr("Please enter recipient's email or phone"); return; }
+      if (!recipient.includes("@") && recipient.replace(/\D/g,"").length < 8) { setRecipientErr("Enter a valid email or Kuwait phone number"); return; }
+      setRecipientErr(""); onPay(selected, recipient);
+    }} className="w-full py-4 rounded-2xl bg-accent text-accent-foreground font-bold text-base hover:opacity-90">
+      Pay {selected} KWD →
+    </motion.button></div>
   );
 }
 
@@ -1604,7 +2003,6 @@ function BottomNav({ activeTab, onTab }: { activeTab: "home"|"bookings"|"calenda
     </div>
   );
 }
-
 // ── Account Switcher Sheet ────────────────────────────────────────────────────
 function AccountSwitcherSheet({ accounts, onSwitch, onClose, onAddAccount }: { accounts: Account[]; onSwitch: (id: string) => void; onClose: () => void; onAddAccount: () => void }) {
   return(
